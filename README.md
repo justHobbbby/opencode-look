@@ -52,15 +52,34 @@ The agent decides when visual information is necessary, then delegates that perc
 
 ## Installation
 
-Copy `look.ts` into your OpenCode plugin directory:
+1. Copy `look.ts` into your OpenCode plugin directory:
 
-```text
-.opencode/
-└── plugin/
-    └── look.ts
-```
+   ```text
+   .opencode/
+   └── plugins/
+       └── look.ts
+   ```
 
-Restart OpenCode after adding or modifying the plugin.
+   Files in `.opencode/plugins/` are loaded automatically at startup.
+
+2. Add `zod` to `.opencode/package.json` (OpenCode runs `bun install` at startup to install dependencies):
+
+   ```json
+   {
+     "dependencies": {
+       "zod": "^4.1.8"
+     }
+   }
+   ```
+
+3. Set the required environment variables (see [Configuration](#configuration)). For example, a local Ollama setup:
+
+   ```bash
+   export LOOK_API_BASE_URL="http://localhost:11434/v1"
+   export LOOK_MODEL="qwen2.5vl:7b"
+   ```
+
+4. Restart OpenCode — fully quit and relaunch. Opening a new session is not enough; plugins are loaded at startup only.
 
 The `look` tool will then be available to the agent.
 
