@@ -135,6 +135,7 @@ Configuration is controlled through environment variables.
 | `LOOK_MODEL` | Vision model | *(required — no default)* |
 | `LOOK_DEFAULT_PROMPT` | Default image analysis prompt | See below |
 | `LOOK_MAX_IMAGE_BYTES` | Maximum image size in bytes | `10485760` (10 MiB) |
+| `LOOK_TIMEOUT_MS` | Request timeout in milliseconds | `120000` (2 min) |
 
 `LOOK_API_BASE_URL` and `LOOK_MODEL` have **no default** and must be set before use. The tool returns a clear error if either is missing.
 
@@ -167,9 +168,18 @@ export LOOK_MODEL="vision-model-name"
 
 No code changes are required when switching providers.
 
+## Privacy
+
+Images are read from your local disk and sent — Base64-encoded — to the endpoint configured in `LOOK_API_BASE_URL`.
+
+- With a **local** endpoint (e.g. `http://localhost:11434/v1`), images never leave your machine.
+- With a **remote** endpoint, the image (and any text or UI it contains) is transmitted to that server. Do not send sensitive screenshots, design drafts, or documents to a remote API unless you trust the endpoint.
+
+For remote endpoints, `look` requests a confirmation before sending each image.
+
 ## Supported Images
 
-Supported file types:
+Supported file types (the tool verifies a file's magic bytes against its extension):
 
 - PNG
 - JPG / JPEG
@@ -177,6 +187,8 @@ Supported file types:
 - WebP
 - BMP
 - SVG
+
+Whether a given format is actually accepted depends on the vision model's API. PNG, JPEG, WebP, and GIF are widely supported by OpenAI-compatible vision endpoints; BMP and SVG are only accepted by some providers. Check your provider's capabilities.
 
 The default maximum image size is **10 MiB**.
 
@@ -200,6 +212,27 @@ export LOOK_MAX_IMAGE_BYTES=20971520
 The HTTP request uses the native `fetch` API rather than shelling out to `curl`.
 
 This avoids passing large Base64 payloads through shell arguments and allows the request to participate in OpenCode's cancellation mechanism.
+
+## Example: Local Vision Model
+
+Look can also be used with a local vision model through Ollama.
+
+For example, I tested:
+
+* **Agent:** OpenCode + Big Pickle
+* **Vision model:** Qwen2.5-VL-7B via Ollama
+* **GPU:** RTX 4060 Laptop GPU
+* **Cost:** essentially just the electricity used by the local machine
+
+With this setup, the agent can use `look` for visual perception while the main agent remains responsible for reasoning and task execution.
+
+For example:
+
+> "In `~/Pictures/Screenshots`, find a screenshot of a WeChat chat window."
+
+The agent can inspect candidate images with the vision model, identify the matching screenshot, and continue the task based on what it sees.
+
+This is only one possible setup. The vision model can be local or remote; any compatible OpenAI-style vision endpoint can be used.
 
 ## Design Philosophy
 

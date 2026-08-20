@@ -21,6 +21,7 @@
  *     - LOOK_MODEL           vision model name (required — no default)
  *     - LOOK_DEFAULT_PROMPT  prompt used when none is supplied via args/options
  *     - LOOK_MAX_IMAGE_BYTES image size limit in bytes (default: 10485760)
+ *     - LOOK_TIMEOUT_MS      request timeout in milliseconds (default: 120000)
  */
 
 import { z } from "zod";
@@ -41,16 +42,16 @@ const LOOK_DEFAULT_PROMPT =
   "Describe this image in detail, including any text, UI elements, or notable visual content.";
 const SUPPORTED_EXTS = "png jpg jpeg gif webp bmp svg";
 
-function resolveMaxImageBytes(): number {
-  const DEFAULT = 10 * 1024 * 1024;
-  const raw = process.env.LOOK_MAX_IMAGE_BYTES;
-  if (raw === undefined || raw === "") return DEFAULT;
+function resolvePositiveInt(envVar: string, fallback: number): number {
+  const raw = process.env[envVar];
+  if (raw === undefined || raw === "") return fallback;
   const parsed = Number(raw);
-  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT;
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
   return Math.floor(parsed);
 }
 
-const LOOK_MAX_IMAGE_BYTES = resolveMaxImageBytes();
+const LOOK_MAX_IMAGE_BYTES = resolvePositiveInt("LOOK_MAX_IMAGE_BYTES", 10 * 1024 * 1024);
+const LOOK_TIMEOUT_MS = resolvePositiveInt("LOOK_TIMEOUT_MS", 120000);
 
 type LookArgs = {
   path: string;
@@ -109,6 +110,43 @@ function mimeForExt(ext: string): string | undefined {
   }
 }
 
+/** Verify a file's magic bytes match its claimed image MIME type. */
+function contentMatchesMime(buf: Buffer, mime: string): boolean {
+  switch (mime) {
+    case "image/png":
+      return buf.length >= 8 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47;
+    case "image/jpeg":
+      return buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+    case "image/gif":
+      return buf.length >= 4 && buf.toString("latin1", 0, 4) === "GIF8";
+    case "image/webp":
+      return buf.length >= 12 && buf.toString("latin1", 0, 4) === "RIFF" && buf.toString("latin1", 8, 12) === "WEBP";
+    case "image/bmp":
+      return buf.length >= 2 && buf[0] === 0x42 && buf[1] === 0x4d;
+    case "image/svg+xml": {
+      const head = buf.toString("utf8", 0, Math.min(buf.length, 1024)).trimStart();
+      return head.startsWith("<svg") || head.startsWith("<?xml");
+    }
+    default:
+      return false;
+  }
+}
+
+/** Return true if the hostname is a local/loopback address. */
+function isLocalHost(hostname: string): boolean {
+  const h = hostname.toLowerCase();
+  return h === "localhost" || h === "127.0.0.1" || h === "::1" || h === "[::1]" || h === "0.0.0.0";
+}
+
+/** Extract the hostname from a base URL, or empty string on parse failure. */
+function baseUrlHost(baseUrl: string): string {
+  try {
+    return new URL(baseUrl).hostname;
+  } catch {
+    return "";
+  }
+}
+
 /** Return the first non-empty string among the given values. */
 function firstNonEmpty(...values: unknown[]): string | undefined {
   for (const value of values) {
@@ -122,10 +160,7 @@ function resolveConfig(args: LookArgs, options: PluginOptions): ResolvedConfig {
     baseUrl:
       firstNonEmpty(options.baseUrl, process.env.LOOK_API_BASE_URL) ??
       LOOK_DEFAULT_BASE_URL,
-    apiKey:
-      (typeof options.apiKey === "string" ? options.apiKey : undefined) ??
-      process.env.LOOK_API_KEY ??
-      "",
+    apiKey: firstNonEmpty(options.apiKey, process.env.LOOK_API_KEY) ?? "",
     model:
       firstNonEmpty(args.model, options.model, process.env.LOOK_MODEL) ??
       LOOK_DEFAULT_MODEL,
@@ -189,23 +224,26 @@ function truncate(text: string, max = 300): string {
   return `${text.slice(0, max)}...`;
 }
 
-function isAbortError(err: unknown): boolean {
+function hasErrorName(err: unknown, name: string): boolean {
   if (
     typeof err === "object" &&
     err !== null &&
-    (err as { name?: unknown }).name === "AbortError"
+    (err as { name?: unknown }).name === name
   ) {
     return true;
   }
   if (
     typeof DOMException !== "undefined" &&
     err instanceof DOMException &&
-    err.name === "AbortError"
+    err.name === name
   ) {
     return true;
   }
   return false;
 }
+
+const isAbortError = (err: unknown) => hasErrorName(err, "AbortError");
+const isTimeoutError = (err: unknown) => hasErrorName(err, "TimeoutError");
 
 /** Parse the API response into either extracted text or a user-facing error. */
 async function parseResponse(res: Response): Promise<ParseResult> {
@@ -307,6 +345,15 @@ const look = (async (input: PluginInput, options: PluginOptions = {}) => {
             }
 
             const buf = await readFile(resolved);
+
+            if (buf.length > LOOK_MAX_IMAGE_BYTES) {
+              return `look: image too large (${buf.length} bytes, max ${LOOK_MAX_IMAGE_BYTES})`;
+            }
+
+            if (!contentMatchesMime(buf, mime)) {
+              return `look: file content does not match its ${ext} extension (expected ${mime})`;
+            }
+
             const dataUrl = `data:${mime};base64,${buf.toString("base64")}`;
 
             const config = resolveConfig(args, options);
@@ -316,7 +363,24 @@ const look = (async (input: PluginInput, options: PluginOptions = {}) => {
             if (!config.model) {
               return "look: no vision model configured; set LOOK_MODEL (or pass the 'model' argument)";
             }
+
+            const host = baseUrlHost(config.baseUrl);
+            if (host && !isLocalHost(host) && typeof context.ask === "function") {
+              try {
+                await context.ask({
+                  permission: "look",
+                  patterns: [config.baseUrl],
+                  always: [],
+                  metadata: { file: resolved },
+                });
+              } catch {
+                return "look: user denied sending this image to a remote endpoint";
+              }
+            }
+
             const request = buildRequest(config, dataUrl);
+
+            const signal = AbortSignal.any([context.abort, AbortSignal.timeout(LOOK_TIMEOUT_MS)]);
 
             let res: Response;
             try {
@@ -324,10 +388,15 @@ const look = (async (input: PluginInput, options: PluginOptions = {}) => {
                 method: "POST",
                 headers: request.headers,
                 body: request.body,
-                signal: context.abort,
+                signal,
               });
             } catch (err) {
-              if (isAbortError(err)) return "look: aborted";
+              if (isTimeoutError(err)) {
+                return `look: timed out after ${LOOK_TIMEOUT_MS}ms`;
+              }
+              if (isAbortError(err)) {
+                return "look: aborted";
+              }
               const message = err instanceof Error ? err.message : String(err);
               return `look: network error: ${message}`;
             }
@@ -338,7 +407,7 @@ const look = (async (input: PluginInput, options: PluginOptions = {}) => {
             return {
               output: parsed.text,
               title: "Look",
-              metadata: { model: config.model, mime, bytes: info.size },
+              metadata: { model: config.model, mime, bytes: buf.length },
             };
           } catch (err) {
             if (isAbortError(err)) return "look: aborted";
