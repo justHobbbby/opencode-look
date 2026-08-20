@@ -271,7 +271,12 @@ const look = (async (input: PluginInput, options: PluginOptions = {}) => {
           prompt: z
             .string()
             .optional()
-            .describe("Optional instruction/question about the image"),
+            .describe(
+              'Ask a specific question about the image when you need targeted information, ' +
+              'such as "what error is shown?", "what does this dialog say?", or "describe the UI layout". ' +
+              'Providing a specific question is recommended when you know what information you need; ' +
+              'omit it only when a general description of the image is sufficient.',
+            ),
           model: z.string().optional().describe("Optional model override"),
         },
         async execute(args: LookArgs, context: ToolContext): Promise<ToolResult> {
