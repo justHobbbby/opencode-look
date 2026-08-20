@@ -272,11 +272,12 @@ const look = (async (input: PluginInput, options: PluginOptions = {}) => {
             .string()
             .optional()
             .describe(
-              'Ask a specific question about the visual content of THIS image (what it shows, any text or UI in it). ' +
-              'Formulate it as a question about this single image, e.g. "Is this a WeChat chat list screenshot?", ' +
-              '"What error does this dialog show?", or "Describe this UI layout". ' +
-              'Do not paste the user\'s overall task here — ask about the image itself. ' +
-              'Omit only when a general description is enough.',
+              "Optional task for the vision model. Do not blindly copy the user's request. " +
+              "First understand what information you need from the image, then formulate a focused visual question for the vision model. " +
+              "For search or filtering tasks, ask the vision model to determine whether the image matches the requested criteria and explain the visual evidence. " +
+              "For example, instead of passing 'find a WeChat chat list screenshot' verbatim, " +
+              "ask 'Does this image show a WeChat chat or conversation list? What visible UI elements indicate this?' " +
+              "Omit the prompt when a general image description is sufficient.",
             ),
           model: z.string().optional().describe("Optional model override"),
         },
