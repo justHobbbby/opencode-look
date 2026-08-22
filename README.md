@@ -186,3 +186,7 @@ Manual testing has covered local Ollama and online DeepSeek Pro + Kimi K2.5 setu
 ## Disclaimer
 
 This project is an independent community project and is not affiliated with, endorsed by, or sponsored by the OpenCode team.
+
+## License
+
+MIT
