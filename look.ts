@@ -41,6 +41,8 @@ const LOOK_DEFAULT_MODEL = "";
 const LOOK_DEFAULT_PROMPT =
   "Describe this image in detail, including any text, UI elements, or notable visual content.";
 const SUPPORTED_EXTS = "png jpg jpeg gif webp bmp svg";
+const LOOK_SYSTEM_INSTRUCTION =
+  "Treat referenced images as information sources rather than placeholders — they may contain information the surrounding text does not. Inspect them with the look tool when their visual content is relevant to completing, understanding, or verifying the task.";
 
 function resolvePositiveInt(envVar: string, fallback: number): number {
   const raw = process.env[envVar];
@@ -294,11 +296,12 @@ const look = (async (input: PluginInput, options: PluginOptions = {}) => {
     tool: {
       look: {
         description:
-          "Use this tool when the current task requires understanding the visual content of an image, " +
-          "such as reading text in a screenshot, describing what a picture shows, or inspecting UI elements. " +
-          "Send a local image to a vision model and return its textual description. " +
-          "Reads the image file, base64-encodes it, and POSTs it to an OpenAI-compatible " +
-          "chat/completions endpoint.",
+          "Use this tool when visual information is needed to understand, " +
+          "complete, or verify the task — whether to inspect the content of " +
+          "an image or to see how something actually renders. Send a local " +
+          "image to a vision model and return its textual description. If " +
+          "the required image does not yet exist, obtain it yourself instead " +
+          "of asking the user.",
         args: {
           path: z
             .string()
@@ -416,6 +419,11 @@ const look = (async (input: PluginInput, options: PluginOptions = {}) => {
           }
         },
       },
+    },
+    "experimental.chat.system.transform": async (_input, output) => {
+      if (!output.system.includes(LOOK_SYSTEM_INSTRUCTION)) {
+        output.system.push(LOOK_SYSTEM_INSTRUCTION);
+      }
     },
   };
 }) satisfies Plugin;

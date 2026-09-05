@@ -17,6 +17,14 @@ Hands: Read / Write
   inspect and change the project
 ```
 
+## With and without `look`
+
+<!-- TODO: add the comparison screenshots -->
+
+| Without `look` | With `look` |
+|:--|:--|
+| *(the agent cannot see the image)* | *(the agent inspects it with `look` and answers)* |
+
 ## What it is and is not
 
 Look is an agent-controlled visual perception channel, not an automatic image interceptor, OCR pipeline, model catalog, or replacement for a native multimodal model.
@@ -25,8 +33,6 @@ The primary agent controls two decisions:
 
 - when to look
 - what visual question to ask
-
-The image itself is sent to a dedicated vision model. Only the model's text response is returned to the primary agent.
 
 ## Why use it?
 
@@ -38,6 +44,10 @@ Look keeps image understanding out of the main context and decouples model selec
 - the vision model can be local or remote
 - the model can be overridden per call
 - local-to-local, local-to-online, online-to-local, and online-to-online combinations are possible
+
+## Don't miss relevant visual information
+
+Text-only agents often skip past images embedded in pages, documents, or API responses, treating them as decorative placeholders even when they carry information the text does not. Look treats referenced images as potential information sources: when an image's visual content matters to the task, the agent should obtain it and inspect it with Look instead of skipping it.
 
 ## Quick start
 
@@ -73,34 +83,12 @@ Look keeps image understanding out of the main context and decouples model selec
    Remote OpenAI-compatible example:
 
    ```bash
-   export LOOK_API_BASE_URL="https://api.moonshot.ai/v1"
+   export LOOK_API_BASE_URL="https://api.deepseek.com"
    export LOOK_API_KEY="your-api-key"
-   export LOOK_MODEL="kimi-k2.5"
+   export LOOK_MODEL="deepseek-v4-flash-vision-exp"
    ```
 
 4. Fully quit and relaunch OpenCode. Plugins are loaded at startup.
-
-## The agent loop
-
-```text
-Primary Agent decides visual information is needed
-  -> Look sends the image and a focused question
-  -> Vision model returns a text observation
-  -> Primary Agent interprets the observation
-  -> Read / Write performs the next action
-  -> Primary Agent may call Look again to verify
-```
-
-Example:
-
-```text
-look(
-  path: "screenshots/login.png",
-  prompt: "Does this page contain a link named 'Sign in'? Where is it?"
-)
-```
-
-The prompt is the agent's focused visual subtask, not a copy of the user's request.
 
 ## Usage
 
@@ -119,14 +107,7 @@ look(
 )
 ```
 
-Override the vision model for one call:
-
-```text
-look(
-  path: "screenshots/login.png",
-  model: "your-vision-model"
-)
-```
+The prompt is the agent's focused visual subtask, not a copy of the user's request.
 
 ## Configuration
 
@@ -168,9 +149,7 @@ Downstream API support can be narrower. PNG, JPEG, WebP, and GIF are widely supp
 
 ## How it works
 
-`look` resolves the path, checks that it is a file, verifies the extension and magic bytes, enforces the size limit, reads the image, Base64-encodes it, and sends it to the configured OpenAI-compatible `/chat/completions` endpoint. The text from the first response choice is returned to the primary agent.
-
-The request uses native `fetch`, so it can participate in OpenCode cancellation and does not pass large Base64 payloads through shell arguments.
+`look` reads a local image, Base64-encodes it, and sends it to the configured OpenAI-compatible `/chat/completions` endpoint. The text from the first response choice is returned to the primary agent. The request uses native `fetch`.
 
 ## Requirements and verification
 
@@ -181,7 +160,7 @@ Requirements:
 - An OpenAI-compatible `/chat/completions` endpoint
 - An OpenCode-compatible plugin runtime
 
-Manual testing has covered local Ollama and online DeepSeek Pro + Kimi K2.5 setups, including screenshot search, focused visual prompts, text and UI extraction, and post-change verification. Error handling has been checked for missing files, invalid paths, unsupported formats, oversized images, network errors, API errors, and cancellation.
+Tested against local Ollama and online vision endpoints, covering screenshot search, focused visual prompts, text and UI extraction, post-change verification, and error handling (missing files, invalid paths, unsupported formats, oversized images, network/API errors, cancellation).
 
 ## Disclaimer
 
