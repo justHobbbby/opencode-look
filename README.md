@@ -19,11 +19,23 @@ Hands: Read / Write
 
 ## With and without `look`
 
-<!-- TODO: add the comparison screenshots -->
+**Prompt:** find the desk-setup photo among a folder of screenshots and answer — *which is on the left, the laptop or the monitor?* and *is the laptop on a stand?*
 
-| Without `look` | With `look` |
-|:--|:--|
-| *(the agent cannot see the image)* | *(the agent inspects it with `look` and answers)* |
+**Target image:**
+
+![The desk-setup photo the agent is asked about](screenshots/target-desk-setup.png)
+
+### Without `look`
+
+![The agent cannot see the image without look](screenshots/without-look.png)
+
+*(the agent cannot see the image and admits it)*
+
+### With `look`
+
+![The agent inspects the image with look](screenshots/with-look.png)
+
+*(the agent inspects it with `look` and answers correctly)*
 
 ## What it is and is not
 
