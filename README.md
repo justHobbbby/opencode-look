@@ -23,17 +23,17 @@ Hands: Read / Write
 
 **Target image:**
 
-![The desk-setup photo the agent is asked about](screenshots/target-desk-setup.png)
+<img width="1695" height="978" alt="Screenshot From 2026-09-05 21-07-54" src="https://github.com/user-attachments/assets/f3fade50-823b-4dad-b817-f6175b4181e7" />
 
 ### Without `look`
 
-![The agent cannot see the image without look](screenshots/without-look.png)
+<img width="2202" height="778" alt="Screenshot From 2026-09-06 01-17-07" src="https://github.com/user-attachments/assets/d798d768-1236-4464-8ed7-125f458ffc14" />
 
 *(the agent cannot see the image and admits it)*
 
 ### With `look`
 
-![The agent inspects the image with look](screenshots/with-look.png)
+<img width="2202" height="737" alt="Screenshot From 2026-09-06 01-17-01" src="https://github.com/user-attachments/assets/280274c5-515d-4837-bb9f-ebd22aa434e4" />
 
 *(the agent inspects it with `look` and answers correctly)*
 
