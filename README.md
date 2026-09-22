@@ -3,10 +3,10 @@
 Give OpenCode a replaceable pair of eyes — send one image to any vision model, get back text.
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)
+![Version](https://img.shields.io/badge/version-0.2.1-blue.svg)
 ![OpenCode plugin](https://img.shields.io/badge/OpenCode-plugin-6f42c1.svg)
 
-https://github.com/user-attachments/assets/d1b57d30-3c76-4119-966b-90c6d2fbee5f
+![Look demo](https://github.com/user-attachments/assets/d1b57d30-3c76-4119-966b-90c6d2fbee5f)
 
 ## TL;DR
 
