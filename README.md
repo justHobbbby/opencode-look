@@ -6,12 +6,7 @@ Give OpenCode a replaceable pair of eyes — send one image to any vision model,
 ![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)
 ![OpenCode plugin](https://img.shields.io/badge/OpenCode-plugin-6f42c1.svg)
 
-<!-- DEMO VIDEO:
-     In the GitHub web editor, drag the demo recording here so GitHub inserts a
-     user-attachments URL. Keep the image reference on its own paragraph so it
-     renders as a video player, e.g.:
-     ![Look demo](https://github.com/user-attachments/assets/<id>)
-     Then delete this comment. -->
+https://github.com/user-attachments/assets/d1b57d30-3c76-4119-966b-90c6d2fbee5f
 
 ## TL;DR
 
