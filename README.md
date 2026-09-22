@@ -61,6 +61,20 @@ Look keeps image understanding out of the main context and decouples model selec
 
 Text-only agents often skip past images embedded in pages, documents, or API responses, treating them as decorative placeholders even when they carry information the text does not. Look treats referenced images as potential information sources: when an image's visual content matters to the task, the agent should obtain it and inspect it with Look instead of skipping it.
 
+## Composing with other tools
+
+Look is a small primitive: it inspects one local image. It is meant to be composed with other tools, so the primary agent decides when visual information is needed and how to produce the image.
+
+A user can merely mention that a screen recording exists:
+
+```text
+There's a screen recording of mine in recordings/.
+```
+
+The plugin has no video support, but the agent can locate the file, extract keyframes with `ffmpeg`, and inspect the resulting images with `look` to understand what happens in the recording. The same pattern applies to other formats: render PDF pages or export frames from a design file to images, then inspect them.
+
+This is not a built-in feature and not magic. Look adds no video, PDF, or OCR handling; the capability emerges from the agent orchestrating existing tools and using `look` as its visual channel.
+
 ## Quick start
 
 1. Copy `look.ts` into `.opencode/plugins/`.
@@ -143,8 +157,39 @@ Describe this image in detail, including any text, UI elements, or notable visua
 - `look` reads a local image file and does not persist it itself.
 - The file bytes are Base64-encoded into a `data:` URL and posted to `LOOK_API_BASE_URL`.
 - For a loopback endpoint such as `localhost`, Look sends the image only to that local endpoint.
-- For a remote host, the image and prompt are sent to that endpoint. The plugin requests permission through OpenCode before sending when `context.ask` is available.
-- Do not send sensitive screenshots, private documents, or design drafts to a remote API unless you trust the endpoint.
+- For a remote host, the image and prompt are sent to that endpoint. For the default agent this happens immediately and silently, with no prompt; some built-in subagents deny tool use, in which case `look` simply does not run.
+- Do not send sensitive screenshots, private documents, or design drafts to a remote API unless you trust the endpoint. The full image bytes leave your machine and reach that third party; there is no redaction.
+
+### Optional: require confirmation
+
+Confirmation is opt-in and off by default. To be asked before each remote send, add the custom `look` permission to `opencode.json`:
+
+```json
+{
+  "permission": {
+    "look": "ask"
+  }
+}
+```
+
+Per-endpoint control is also valid:
+
+```json
+{
+  "permission": {
+    "look": {
+      "*": "ask",
+      "https://api.deepseek.com": "allow"
+    }
+  }
+}
+```
+
+Entries are matched in order, so later entries take precedence: keep `"https://api.deepseek.com": "allow"` after `"*": "ask"`, or the broader `ask` silently wins. The endpoint key is matched literally against the configured `LOOK_API_BASE_URL`, including any trailing slash or `/v1` path, so copy it verbatim from `LOOK_API_BASE_URL` or the rule will not match.
+
+The prompt offers once / always / reject. Choosing "always" suppresses further prompts for that endpoint until OpenCode is restarted — it is session-scoped, not persistent. Setting `"look": "deny"` blocks remote sends entirely. Loopback endpoints such as `localhost` do not trigger a prompt.
+
+This relies on OpenCode's permission handling. With no `look` rule configured, OpenCode's default `*: allow` catch-all makes the permission check pass silently, so no prompt appears; setting `"look": "ask"` is what makes it appear.
 
 ## Supported images
 
