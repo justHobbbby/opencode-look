@@ -373,7 +373,7 @@ const look = (async (input: PluginInput, options: PluginOptions = {}) => {
                 await context.ask({
                   permission: "look",
                   patterns: [config.baseUrl],
-                  always: [],
+                  always: [config.baseUrl],
                   metadata: { file: resolved },
                 });
               } catch {
